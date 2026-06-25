@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <title>Калькулятор расстановки острова</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <h1 data-i18n="appTitle">Калькулятор расстановки острова</h1>
+            <p data-i18n="appSubtitle">Офлайн-калькулятор расстановки островов для Android.</p>
+        </div>
+        <span id="versionBadge" class="version-badge">v0.2.0</span>
+    </header>
+
+    <main class="app-shell">
+        <section id="sectionMap" class="app-section active">
+            <div class="panel">
+                <h2 data-i18n="mapTitle">Карта</h2>
+                <p class="hint" data-i18n="mapHint">По умолчанию касание по карте добавляет или убирает куст/камень.</p>
+                <div id="mapGridHost"></div>
+                <div class="map-actions">
+                    <button id="mapAnalyzeBtn" class="primary" type="button" data-i18n="analyze">Проанализировать</button>
+                    <button id="mapClearBuildingsBtn" type="button" data-i18n="clearBuildings">Очистить постройки</button>
+                </div>
+                <div id="backgroundStatus" class="background-status" hidden></div>
+            </div>
+            <div class="panel result-panel">
+                <h2 data-i18n="resultTitle">Результат</h2>
+                <div id="summary" class="summary" data-i18n="summaryEmpty">Загрузи шаблон, нарисуй остров или нажми “Авторазместить”.</div>
+                <div id="warnings" class="warnings"></div>
+                <details id="autoLogDetails">
+                    <summary data-i18n="autoLogTitle">Лог авторазмещения</summary>
+                    <div id="autoLog" class="auto-log"></div>
+                </details>
+                <details>
+                    <summary data-i18n="generators">Генераторы</summary>
+                    <div id="generatorsTable"></div>
+                </details>
+                <details>
+                    <summary data-i18n="sourcesWind">Источники</summary>
+                    <div id="sourcesTable"></div>
+                </details>
+                <details>
+                    <summary data-i18n="radiators">Радиаторы</summary>
+                    <div id="radiatorsTable"></div>
+                </details>
+            </div>
+        </section>
+
+        <section id="sectionTemplates" class="app-section">
+            <div class="panel">
+                <h2 data-i18n="templatesTitle">Шаблоны</h2>
+                <p class="hint" data-i18n="templatesHint">Шаблоны удалить нельзя. Загружается копия: её можно чистить, застраивать и сохранять как личную.</p>
+                <label data-i18n-label="cleanIslands">Чистовые острова
+                    <select id="templateSelect" class="hidden-select"></select>
+                    <div id="templateChoice" class="choice-select">
+                        <button id="templateChoiceButton" class="choice-button" type="button">
+                            <span id="templateChoiceText">—</span><span class="choice-arrow">▾</span>
+                        </button>
+                        <div id="templateChoiceMenu" class="choice-menu" hidden></div>
+                    </div>
+                </label>
+                <button id="loadTemplateBtn" class="primary template-copy-btn" type="button" data-i18n="createFromTemplate">Создать копию из шаблона</button>
+            </div>
+        </section>
+
+        <section id="sectionDrawing" class="app-section">
+            <div class="panel">
+                <h2 data-i18n="drawingTitle">Настройки рисования</h2>
+                <p class="hint" data-i18n="drawingHint">Веди пальцем по клеткам. Двойное быстрое нажатие заливает область до ближайших границ.</p>
+
+                <div class="field-grid">
+                    <label data-i18n-label="rows">Строки
+                        <input id="rowsInput" type="number" min="1" max="50" value="20">
+                    </label>
+                    <label data-i18n-label="cols">Столбцы
+                        <input id="colsInput" type="number" min="1" max="50" value="20">
+                    </label>
+                    <button id="resizeBtn" type="button" data-i18n="applySize">Применить размер</button>
+                </div>
+
+                <div class="tool-grid">
+                    <button class="tool terrain active" data-tool="toggleTerrain" type="button" data-i18n="toolTerrain">Вода / остров</button>
+                    <button class="tool obstacle" data-tool="obstacle" type="button" data-i18n="toolObstacle">Добавить / удалить кусты</button>
+                    <button class="tool source" data-tool="S" type="button" data-i18n="toolSource">Источник</button>
+                    <button class="tool generator" data-tool="G" type="button" data-i18n="toolGenerator">Генератор</button>
+                    <button class="tool radiator" data-tool="R" type="button" data-i18n="toolRadiator">Радиатор</button>
+                    <button class="tool" data-tool="erase" type="button" data-i18n="toolErase">Стереть здание</button>
+                    <button id="undoFillBtn" type="button" data-i18n="undoFill">Отменить заливку</button>
+                </div>
+
+                <div id="drawingGridHost"></div>
+            </div>
+        </section>
+
+        <section id="sectionBuildings" class="app-section">
+            <div class="panel">
+                <h2 data-i18n="buildingsTitle">Настройка зданий</h2>
+                <div class="form-grid">
+                    <label class="combo-label" data-i18n-label="sourceType">Тип источника
+                        <div class="combo" data-kind="source">
+                            <input id="sourceType" class="combo-input" type="text" autocomplete="off" spellcheck="false" placeholder="Начни писать или открой список" data-i18n-placeholder="comboPlaceholder">
+                            <button id="sourceTypeClear" class="combo-clear" type="button" title="Очистить" aria-label="Очистить">×</button>
+                            <button id="sourceTypeToggle" class="combo-toggle" type="button" title="Показать список" aria-label="Показать список">▾</button>
+                            <div id="sourceTypeMenu" class="combo-menu" hidden></div>
+                        </div>
+                    </label>
+                    <label data-i18n-label="sourceLevel">Уровень источника
+                        <select id="sourceLevel" class="hidden-select"></select>
+                        <div id="sourceLevelChoice" class="choice-select">
+                            <button id="sourceLevelChoiceButton" class="choice-button" type="button">
+                                <span id="sourceLevelChoiceText">—</span><span class="choice-arrow">▾</span>
+                            </button>
+                            <div id="sourceLevelChoiceMenu" class="choice-menu" hidden></div>
+                        </div>
+                    </label>
+
+                    <label id="generatorTypeLabel" class="combo-label" data-i18n-label="generatorType">Тип генератора
+                        <div class="combo" data-kind="generator">
+                            <input id="generatorType" class="combo-input" type="text" autocomplete="off" spellcheck="false" placeholder="Начни писать или открой список" data-i18n-placeholder="comboPlaceholder">
+                            <button id="generatorTypeClear" class="combo-clear" type="button" title="Очистить" aria-label="Очистить">×</button>
+                            <button id="generatorTypeToggle" class="combo-toggle" type="button" title="Показать список" aria-label="Показать список">▾</button>
+                            <div id="generatorTypeMenu" class="combo-menu" hidden></div>
+                        </div>
+                    </label>
+                    <label id="generatorLevelLabel" data-i18n-label="generatorLevel">Уровень генератора
+                        <select id="generatorLevel" class="hidden-select"></select>
+                        <div id="generatorLevelChoice" class="choice-select">
+                            <button id="generatorLevelChoiceButton" class="choice-button" type="button">
+                                <span id="generatorLevelChoiceText">—</span><span class="choice-arrow">▾</span>
+                            </button>
+                            <div id="generatorLevelChoiceMenu" class="choice-menu" hidden></div>
+                        </div>
+                    </label>
+
+                    <label class="combo-label" data-i18n-label="radiatorType">Тип радиатора
+                        <div class="combo" data-kind="radiator">
+                            <input id="radiatorType" class="combo-input" type="text" autocomplete="off" spellcheck="false" placeholder="Начни писать или открой список" data-i18n-placeholder="comboPlaceholder">
+                            <button id="radiatorTypeClear" class="combo-clear" type="button" title="Очистить" aria-label="Очистить">×</button>
+                            <button id="radiatorTypeToggle" class="combo-toggle" type="button" title="Показать список" aria-label="Показать список">▾</button>
+                            <div id="radiatorTypeMenu" class="combo-menu" hidden></div>
+                        </div>
+                    </label>
+                    <label data-i18n-label="radiatorLevel">Уровень радиатора
+                        <select id="radiatorLevel" class="hidden-select"></select>
+                        <div id="radiatorLevelChoice" class="choice-select">
+                            <button id="radiatorLevelChoiceButton" class="choice-button" type="button">
+                                <span id="radiatorLevelChoiceText">—</span><span class="choice-arrow">▾</span>
+                            </button>
+                            <div id="radiatorLevelChoiceMenu" class="choice-menu" hidden></div>
+                        </div>
+                    </label>
+
+                    <label class="checkbox-label">
+                        <input id="allowObstaclesInput" type="checkbox" checked>
+                        <span data-i18n="allowObstacles">Авторазмещение может использовать кусты/камни</span>
+                    </label>
+                </div>
+                <div id="equipmentInfo" class="hint">Каталог загружается...</div>
+                <p class="hint" data-i18n="windNote">Для ветротурбины генератор не используется. Тепло на охлаждение = 20% от значения ветротурбины.</p>
+                <button id="autoBtn" class="primary" type="button" data-i18n="autoPlace">Авторазместить</button>
+            </div>
+        </section>
+
+        <section id="sectionSaves" class="app-section">
+            <div class="panel">
+                <h2 data-i18n="savesTitle">Сохранения</h2>
+                <label data-i18n-label="saveName">Название
+                    <input id="saveNameInput" type="text" value="Остров 1">
+                </label>
+                <div class="action-grid">
+                    <button id="saveBrowserBtn" type="button" data-i18n="saveDevice">Сохранить на устройстве</button>
+                    <button id="downloadJsonBtn" type="button" data-i18n="downloadJson">Поделиться JSON</button>
+                </div>
+                <label data-i18n-label="mySaves">Мои сохранения
+                    <select id="savedLayoutsSelect" class="hidden-select"></select>
+                    <div id="savedLayoutsChoice" class="choice-select">
+                        <button id="savedLayoutsChoiceButton" class="choice-button" type="button">
+                            <span id="savedLayoutsChoiceText">—</span><span class="choice-arrow">▾</span>
+                        </button>
+                        <div id="savedLayoutsChoiceMenu" class="choice-menu" hidden></div>
+                    </div>
+                </label>
+                <div class="action-grid">
+                    <button id="loadBrowserBtn" type="button" data-i18n="load">Загрузить</button>
+                    <button id="deleteSaveBtn" type="button" data-i18n="delete">Удалить</button>
+                </div>
+                <div class="action-grid">
+                    <button id="chooseFileBtn" type="button" data-i18n="loadJson">Загрузить JSON</button>
+                    <button id="exportBtn" type="button" data-i18n="showJson">Показать JSON</button>
+                    <button id="importBtn" type="button" data-i18n="loadFromField">Загрузить из поля</button>
+                </div>
+                <input id="jsonFileInput" class="hidden-input" type="file" accept="application/json,.json">
+                <textarea id="jsonBox" placeholder="Здесь появится JSON острова, или сюда можно вставить сохранённый JSON" data-i18n-placeholder="jsonPlaceholder"></textarea>
+            </div>
+        </section>
+
+        <section id="sectionSettings" class="app-section">
+            <div class="panel">
+                <h2 data-i18n="settingsTitle">Настройки</h2>
+                <div class="info-list">
+                    <div><span data-i18n="currentVersion">Версия приложения</span>: <b id="settingsVersion">0.2.0</b></div>
+                    <div><span data-i18n="currentTime">Текущее время</span>: <b id="currentDateTime">—</b></div>
+                    <div>Telegram: <a href="https://t.me/allecsure" target="_blank" rel="noopener">@allecsure</a></div>
+                </div>
+                <div class="settings-actions">
+                    <button id="openChangelogBtn" type="button" data-i18n="openChangelog">История изменений</button>
+                    <button id="openLanguageBtn" type="button" data-i18n="changeLanguage">Сменить язык</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="sectionChangelog" class="app-section">
+            <div class="panel">
+                <h2 data-i18n="changelogTitle">История изменений</h2>
+                <div id="changelogFull" class="changelog"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="gridShell" class="grid-shell">
+        <div class="legend">
+            <span><i class="swatch available"></i><span data-i18n="legendIsland">остров</span></span>
+            <span><i class="swatch obstacle"></i><span data-i18n="legendObstacle">куст/камень</span></span>
+            <span><i class="swatch blocked"></i><span data-i18n="legendWater">вне острова</span></span>
+            <span><i class="swatch source"></i><span data-i18n="legendSource">источник</span></span>
+            <span><i class="swatch generator"></i><span data-i18n="legendGenerator">генератор</span></span>
+            <span><i class="swatch radiator"></i><span data-i18n="legendRadiator">радиатор</span></span>
+        </div>
+        <div class="zoom-bar">
+            <button id="zoomOutBtn" type="button">−</button>
+            <button id="zoomResetBtn" type="button">100%</button>
+            <button id="zoomInBtn" type="button">+</button>
+        </div>
+        <div class="grid-scroll" aria-label="Поле острова">
+            <div id="grid" class="grid"></div>
+        </div>
+    </div>
+
+    <button id="menuFab" class="menu-fab" type="button" aria-label="Меню">☰</button>
+    <div id="menuBackdrop" class="menu-backdrop" hidden></div>
+    <nav id="menuSheet" class="menu-sheet" hidden>
+        <button data-section="map" type="button" data-i18n="navMap">Карта</button>
+        <button data-section="templates" type="button" data-i18n="navTemplates">Шаблоны</button>
+        <button data-section="drawing" type="button" data-i18n="navDrawing">Рисование</button>
+        <button data-section="buildings" type="button" data-i18n="navBuildings">Здания</button>
+        <button data-section="saves" type="button" data-i18n="navSaves">Сохранения</button>
+        <button data-section="settings" type="button" data-i18n="navSettings">Настройки</button>
+    </nav>
+
+    <div id="modalBackdrop" class="modal-backdrop" hidden></div>
+    <div id="modal" class="modal" hidden role="dialog" aria-modal="true">
+        <button id="modalCloseBtn" class="modal-close" type="button">×</button>
+        <h2 id="modalTitle"></h2>
+        <div id="modalBody" class="modal-body"></div>
+        <div id="modalActions" class="modal-actions"></div>
+    </div>
+
+    <script src="i18n/ru.js"></script>
+    <script src="i18n/en.js"></script>
+    <script src="i18n/index.js"></script>
+    <script src="catalog.js"></script>
+    <script src="templates.js"></script>
+    <script src="optimizer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Heat Island Optimizer</string>
+    <string name="title_activity_main">Heat Island Optimizer</string>
+    <string name="package_name">ru.fabermillenium.heatislandoptimizer</string>
+    <string name="custom_url_scheme">ru.fabermillenium.heatislandoptimizer</string>
+</resources>

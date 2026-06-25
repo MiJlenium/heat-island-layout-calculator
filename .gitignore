@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Web/build output
+build/
+dist/
+
+# Android / Gradle generated files
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release/
+android/app/debug/
+
+# Local machine settings
+local.properties
+android/local.properties
+.idea/
+*.iml
+.vscode/
+
+# Release artifacts
+*.apk
+*.aab
+*.zip
+*.rar
+
+# Signing keys / secrets
+*.jks
+*.keystore
+keystore.properties
+google-services.json
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
